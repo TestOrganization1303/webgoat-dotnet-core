@@ -1,0 +1,55 @@
+stages:
+    - build
+    - security
+    - deploy
+
+# for a simple node.js build, this step is (almost) meaningless
+build_app:
+    image: bitnami/dotnet-sdk:5
+    stage: build
+    script: 
+        - dotnet build
+        - cd WebGoatCore/bin/Debug/net5.0/publish
+        - zip -r ../upload.zip .
+    artifacts:
+        paths:
+            - WebGoatCore/bin/Debug/net5.0/upload.zip
+
+veracode_scan:
+    image: veracode/api-wrapper-java:latest
+    stage: security
+    script:
+        # the scan WILL fail, so just fire and forget
+        - java -jar /opt/veracode/api-wrapper.jar -vid $VERACODE_API_ID -vkey $VERACODE_API_KEY
+            -action UploadAndScan -appname "VulnImages-Webgoat-NetCore" -createprofile false
+            -filepath WebGoatCore/bin/Debug/net5.0/upload.zip -version "Commit ${CI_COMMIT_SHA:0:8} - Job $CI_JOB_ID"
+    allow_failure: true
+
+veracode_sca_scan:
+    image: bitnami/dotnet-sdk:5
+    stage: security
+    script:
+        - curl -sSL https://download.sourceclear.com/ci.sh | sh
+                    
+dockerize:
+    image: docker:stable
+    stage: deploy
+    variables:
+        DOCKER_DRIVER: overlay2
+        # docker 19.03 has TLS on by default, see https://about.gitlab.com/releases/2019/07/31/docker-in-docker-with-docker-19-dot-03/
+        DOCKER_TLS_CERTDIR: ""  
+        REPOSITORY_URL: $REPO_URL
+    services:
+        - docker:19.03.0-dind
+    before_script:
+        - apk add --update python3 py-pip
+        - pip3 install awscli
+    script:
+        - $(aws ecr get-login --no-include-email --region us-east-2)
+        - docker build -t webgoat-netcore:$CI_PIPELINE_ID .
+        - docker tag webgoat-netcore:$CI_PIPELINE_ID $REPOSITORY_URL:webgoat-netcore-latest
+        - docker tag webgoat-netcore:$CI_PIPELINE_ID $REPOSITORY_URL:webgoat-netcore-$CI_PIPELINE_ID
+        - docker push $REPOSITORY_URL:webgoat-netcore-latest
+        - docker push $REPOSITORY_URL:webgoat-netcore-$CI_PIPELINE_ID
+    after_script:
+        - docker images
