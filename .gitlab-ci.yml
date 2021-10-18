@@ -10,10 +10,10 @@ build_app:
     script: 
         - dotnet publish
         - cd WebGoatCore/bin/Debug/net5.0/publish
-        - zip -r ../upload.zip .
+        - tar -zcvf ../upload.tar.gz .
     artifacts:
         paths:
-            - WebGoatCore/bin/Debug/net5.0/upload.zip
+            - WebGoatCore/bin/Debug/net5.0/upload.tar.gz
 
 veracode_scan:
     image: veracode/api-wrapper-java:latest
@@ -22,7 +22,7 @@ veracode_scan:
         # the scan WILL fail, so just fire and forget
         - java -jar /opt/veracode/api-wrapper.jar -vid $VERACODE_API_ID -vkey $VERACODE_API_KEY
             -action UploadAndScan -appname "VulnImages-Webgoat-NetCore" -createprofile false
-            -filepath WebGoatCore/bin/Debug/net5.0/upload.zip -version "Commit ${CI_COMMIT_SHA:0:8} - Job $CI_JOB_ID"
+            -filepath WebGoatCore/bin/Debug/net5.0/upload.tar.gz -version "Commit ${CI_COMMIT_SHA:0:8} - Job $CI_JOB_ID"
     allow_failure: true
 
 veracode_sca_scan:
