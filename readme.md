@@ -1,117 +1,92 @@
-# WebGoat.NET version 0.1
+# Introduction
 
-## Build status
+This project is designed to show the complete SDLC with all of our Veracode tools used at the appropriate places in the build process.  This complete process will include:
 
-![build .NET 5](https://github.com/tobyash86/WebGoat.NETCore/workflows/build%20.NET%205/badge.svg)
+* building and packaging the app for scanning
+* Veracode scanning of first party code
+* Veracode SCA scanning of third-party code
+* building a Docker image for deployment and Veracode dynamic scanning (*nix only)
 
-## The next generation of the WebGoat example project to demonstrate OWASP TOP 10 vulnerabilities
+This is a Veracode-specific readme file.  For the original, see readme-original.md.
 
-This is a re-implementation of the original [WebGoat project for .NET](https://github.com/rappayne/WebGoat.NET).
+# How to use this
 
-This web application is a learning platform that attempts to teach about
-common web security flaws. It contains generic security flaws that apply to
-most web applications. It also contains lessons that specifically pertain to
-the .NET framework. The exercises in this app are intended to teach about 
-web security attacks and how developers can overcome them.
+You have 2 options:
 
-### WARNING!: 
-THIS WEB APPLICATION CONTAINS NUMEROUS SECURITY VULNERABILITIES 
-WHICH WILL RENDER YOUR COMPUTER VERY INSECURE WHILE RUNNING! IT IS HIGHLY
-RECOMMENDED TO COMPLETELY DISCONNECT YOUR COMPUTER FROM ALL NETWORKS WHILE
-RUNNING!
+1. build from the existing repo (not making any modifications)
+2. create a copy (fork) the existing repo for the ability to make your own mods and then build your modified copy
 
-### Notes:
- - Google Chrome performs filtering for reflected XSS attacks. These attacks
-   will not work unless chrome is run with the argument 
-   `--disable-xss-auditor`.
+## Option 1 - Build from the existing repo
 
-## Requirements
-- .NET 5 SDK
+The instructions below assume you are building using the Jenkins installed on your Windows machine (2019.4 or later).  Note that it is also possible to build on your Mac or a linux machine.
 
-## How to build and run
+### 1. Get Jenkins ready
 
-### 1. Running in a Docker container
+You will need the following plugins added to Jenkins, beyond what's already here in the 2019.4 images:
 
-The provided Dockerfile is compatible with both Linux and Windows containers.  
-To build a Docker image, execute the following command:
+* Pipeline Utility Steps
+* Pipeline Maven Integration
+* AnsiColor
 
-```sh
-docker build --pull --rm -t webgoat.net .
-```
+Goto Jenkins --> Manage Jenkins --> Manage Plugins and add these
 
-#### Linux containers
+For Windows only, you will probably need to tell git to handle long filenames (you will see an error during the git clean phase of the build about 'filename too long').  To do this, open a Cmd or Powershell prompt and enter:
+``` git config --system core.longpaths true``` and then restart Jenkins (http://localhost:8082/restart).  Ignore any scary error messages, reload the page if necessary.  Jenkins will take about a minute to restart.
 
-To run the `webgoat.net` image, execute the following command:
+### 2. Configure the tools
 
-```sh
-docker run --rm -d -p 5000:80 --name webgoat.net webgoat.net
-```
+Goto Jenkins --> Manage Jenkins --> Global Tool Configuration and setup the tools
 
-WebGoat.NETCore website should be accessible at http://localhost:5000.
+#### 2.1 dotnet
 
-#### Windows containers
+Make sure you have dotnet and a .NET 5.x SDK.  Likely you already have this as it was probably installed when Visual Studio was installed.
 
-To run `webgoat.net` image, execute the following command:
+![dotnet config](./doc/images/dotnet_config.jpg)
 
-```sh
-docker run --rm --name webgoat.net webgoat.net
-```
+### 3. Configure Credentials in Jenkins 
 
-Windows containers do not support binding to localhost. To access the website, you need to provide the IP address of your Docker container. To obtain the IP, execute the following command:
+Goto Jenkins --> Manage Jenkins --> Configure Credentials --> Credentials and add the following to the Jenkins store, global domain:
 
-```sh
-docker exec webgoat.net ipconfig
-```
-The output will include the IP of the 'webgoat.net' container, for example:
+#### 3.1 Veracode login
 
-```
-Ethernet adapter Ethernet:
+Add a 'username with password' credential with the following:
 
-   Connection-specific DNS Suffix  . : 
-   Link-local IPv6 Address . . . . . : fe80::1967:6598:124:cfa3%4
-   IPv4 Address. . . . . . . . . . . : 172.29.245.43
-   Subnet Mask . . . . . . . . . . . : 255.255.240.0
-   Default Gateway . . . . . . . . . : 172.29.240.1
-```
+![API ID and Key](./doc/images/API_creds.jpg)
 
-In the above example, you can access the WebGoat.NETCore website at http://172.29.245.43.
+The username is your API-ID and the password is your API-Key.  The ID field must be "veracode_login" (to match the Jenkinsfile).  The Description field can be anything.
 
-#### Stopping Docker container
+#### 3.2 Srcclr token
 
-To stop the `webgoat.net` container, execute the following command:
+Add a 'secret text' credential with the following:
 
-```sh
-docker stop webgoat.net
-```
+![srcclr token](./doc/images/Srcclr_token.jpg)
 
-### 2. Run locally using dotnet.exe (Kestrel)
+The 'Secret' is the Source Clear token (please use a workspace agent, not an org-level agent).  The ID must be "SCA_Token" (to match the Jenkinsfile).  The Description field can be anything.
 
-1. Build and publish WebGoat.NETCore with the following command:
+### 4. Create the Jenkins job
 
-```sh
-dotnet publish -c release -o ./app 
-```
+Create a Jenkins Pipeline job with the following Pipeline section (you can ignore all the other fields):
 
-The web application will be deployed to the `app` folder in the current directory.
+![jenkins job](./doc/images/Jenkins_job.jpg)
 
-2. Execute the web application on localhost with the following command:
+Note: for the Pipeline scanner, use 'Jenkinsfile_vpipe' as the Script Path.
 
-```sh
-dotnet ./app/WebGoatCore.dll --urls=http://localhost:5000
-```
+### 5. Build w/Jenkins
 
-The the WebGoat.NETCore website will be accessible at the URL specified with the `--urls` parameter: http://localhost:5000.
+Click Build Now to run the job.
 
-### 2. Run using a script
-The WebGoat.NET projects ships with scripts that allow you to conveniently run the web application. The following scripts are located in the the "script" directory in the root of the project:
-- runInDocker.bat - Runs the application in a Docker container on Windows.
-- runInDocker.sh - Runs the application in a Docker container on Linux.
-- runLocal.bat - Runs the application locally on Windows.
-- runLocal.sh - Runs the application locally on Linux.
+![jenkins build](./doc/images/Jenkins_build.jpg)
 
-## Known issues:
+## Option 2 - Getting this repo locally
 
-1. The latest OWASP Top 10 is not covered. The uncovered vulnerabilities need to be added to the code base.
-2. Educational documents/trainings for any categories of the latest OWASP Top 10 are not available.
+Assumes you already have an account on GitHub, GitLab, or a similar service.
 
+Fork the existing repo into your account, and then use your copy of the repo.  Clone it locally, make mods, and push them back to your account.
 
+### Building w/Jenkins
+
+Follow the steps above, except use your repo instead of the master copy on gitlab.com
+
+## Deploying 
+
+Coming...
