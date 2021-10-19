@@ -43,6 +43,8 @@ Make sure you have dotnet and a .NET 5.x SDK.  Likely you already have this as i
 
 ![dotnet config](./doc/images/dotnet_config.jpg)
 
+If you don't have dotnet and the required SDK, install from [here](https://dotnet.microsoft.com/download/dotnet/5.0) .
+
 ### 3. Configure Credentials in Jenkins 
 
 Goto Jenkins --> Manage Jenkins --> Configure Credentials --> Credentials and add the following to the Jenkins store, global domain:
