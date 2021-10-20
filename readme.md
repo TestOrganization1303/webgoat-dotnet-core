@@ -39,7 +39,7 @@ Goto Jenkins --> Manage Jenkins --> Global Tool Configuration and setup the tool
 
 #### 2.1 dotnet
 
-Make sure you have dotnet and a .NET 5.x SDK.  Likely you already have this as it was probably installed when Visual Studio was installed.
+Make sure you have dotnet and a .NET 5.x SDK.  Likely you already have this as it was probably installed when Visual Studio was installed.  This was tested with version 5.0.401 on Mac and 5.0.402 on Windows.
 
 ![dotnet config](./doc/images/dotnet_config.jpg)
 
