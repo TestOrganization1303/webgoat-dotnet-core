@@ -1,23 +1,63 @@
-name: build .NET 5
+name: Veracode Static Analysis Sandbox Scan
 
 on:
-  push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
-
+#   push:
+#     branches: [ "main" ]
+#   pull_request:
+#     # The branches below must be a subset of the branches above
+#     branches: [ "main" ]
+# Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+# Run daily at 6pm GMT
+  schedule:
+    - cron: '00 18 * * *'
+    
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
+  
+#     runs-on: windows-latest
     steps:
-    - uses: actions/checkout@v2
+    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it and copies all sources into ZIP file for submitting for analysis. Replace this section with your applications build steps
+    - uses: actions/checkout@v3
+      with:
+        repository: ''
     - name: Setup .NET 5
       uses: actions/setup-dotnet@v1
       with:
         dotnet-version: 5.0.100
-    - name: Install dependencies
-      run: dotnet restore
     - name: Build
-      run: dotnet build --configuration Release --no-restore
+      run: |
+        ls -l
+        dotnet restore 
+        dotnet publish -c Debug -o ./output
+    - name: Create zip archive
+      run: zip -r veracode.zip ./output
+
+#     - name: Setup .NET
+#       run: |
+#         choco install dotnetcore-sdk -y
+#         dotnet --version
+#     - name: Build application
+#       run: |
+#         dotnet restore
+#         dotnet publish -c Debug -o ./output
+        
+#     - name: Setup 7zip
+#       run: |
+#         choco install 7zip -y
+        
+#     - name: Create zip archive
+#       run: 7z a -tzip veracode.zip ./output
+        
+    - name: Upload & Scan
+      uses: veracode/veracode-uploadandscan-action@0.2.4
+      with:
+        appname: ${{ github.repository }}
+        createprofile: true
+        filepath: 'veracode.zip'
+        version: ${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}
+        vid: ${{ secrets.VERACODE_API_ID }}
+        vkey: ${{ secrets.VERACODE_API_KEY }}
+        createsandbox: true 
+        scantimeout: 45
